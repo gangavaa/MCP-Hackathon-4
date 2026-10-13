@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ask the Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="panel" id="panel">
+      <header class="panel-head">
+        <div class="brand"><span class="brand-mark">NMS</span> Ask the Dashboard</div>
+        <h1 id="title">Waiting for a chart…</h1>
+        <p id="insight" class="insight" hidden></p>
+        <nav id="crumbs" class="crumbs" hidden></nav>
+      </header>
+
+      <div class="toolbar">
+        <div id="types" class="segmented" role="group" aria-label="Chart type"></div>
+        <span id="hint" class="hint"></span>
+      </div>
+
+      <section id="chart" class="chart" aria-live="polite"></section>
+
+      <footer class="panel-foot">
+        <details class="sql">
+          <summary>Show SQL</summary>
+          <pre id="sql"></pre>
+        </details>
+        <div class="actions">
+          <button id="explain" class="btn" type="button">Explain this</button>
+          <button id="open" class="btn" type="button">Open dashboard</button>
+          <button id="pin" class="btn btn-primary" type="button">Pin to dashboard</button>
+        </div>
+      </footer>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

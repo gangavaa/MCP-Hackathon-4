@@ -1,0 +1,29 @@
+{
+  "name": "nms-ask-dashboard",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Ask the Dashboard \u2014 Spring Boot backend (REST + MCP) and Angular frontend. Root scripts drive both.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend run build && mvn -q -B -f backend/pom.xml package -DskipTests",
+    "start": "cd backend && mvn -q spring-boot:run",
+    "start:reset": "cd backend && mvn -q spring-boot:run -Dspring-boot.run.arguments=--reset",
+    "dev:frontend": "npm --prefix frontend start",
+    "test": "mvn -q -B -f backend/pom.xml test",
+    "smoke": "node scripts/smoke.ts",
+    "setup:claude": "node scripts/claude-desktop.ts",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "docker:up": "docker compose --profile app up -d --build --wait",
+    "docker:down": "docker compose --profile app down",
+    "login": "java bridge/McpStdioBridge.java --login"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/core": "^2.3.1",
+    "zod": "^4.6.6"
+  }
+}

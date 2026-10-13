@@ -1,0 +1,62 @@
+{
+  "query": {
+    "type": "object",
+    "properties": {
+      "dataset": { "type": "string", "description": "farms | devices | issues | connectivity — see list_datasets." },
+      "metric": { "type": "string", "description": "A metric key of the dataset, e.g. offline_count." },
+      "groupBy": {
+        "type": "array",
+        "items": { "type": "string" },
+        "maxItems": 2,
+        "description": "Up to two dimension keys: the category axis, then the series."
+      },
+      "filters": {
+        "type": "array",
+        "description": "Use the exact values list_datasets lists for a dimension.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "field": { "type": "string", "description": "A dimension key of the dataset (or a numeric filter field such as battery_pct)." },
+            "op": { "type": "string", "enum": ["eq", "neq", "in", "contains", "gte", "lte"] },
+            "value": {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "array", "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] } }
+              ]
+            }
+          },
+          "required": ["field", "op", "value"]
+        }
+      },
+      "timeRange": {
+        "type": "object",
+        "description": "Relative to the data's anchor date. Omit for all time (60 days of history).",
+        "properties": {
+          "lastDays": { "type": "integer", "minimum": 1, "maximum": 366 },
+          "offsetDays": { "type": "integer", "minimum": 0, "description": "Shift the window back, e.g. 7 for \"the week before\"." }
+        },
+        "required": ["lastDays"]
+      },
+      "timeBucket": { "type": "string", "enum": ["day", "week"], "description": "Adds a leading period dimension — use for trends." },
+      "order": { "type": "string", "enum": ["metric_desc", "metric_asc", "dimension"] },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 500 }
+    },
+    "required": ["dataset", "metric"]
+  },
+  "chartSpec": {
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "description": "Short, specific, e.g. \"Offline devices by farm\"." },
+      "chartType": {
+        "type": "string",
+        "enum": ["bar", "hbar", "line", "area", "pie", "donut", "table", "kpi"],
+        "description": "bar/hbar for rankings (hbar when labels are long, e.g. farms), line/area for timeBucket trends, pie/donut for a share of up to ~6 parts, kpi for one number, table for detail."
+      },
+      "query": { "$ref": "#/$defs/query" },
+      "compare": { "type": "string", "enum": ["previous_period"], "description": "Adds the window just before as a second series — needs query.timeRange." },
+      "insight": { "type": "string", "description": "One sentence on what the data shows, written after looking at it. Shown under the title." }
+    },
+    "required": ["title", "chartType", "query"]
+  }
+}

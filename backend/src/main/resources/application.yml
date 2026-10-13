@@ -1,0 +1,47 @@
+server:
+  port: ${PORT:4300}
+
+spring:
+  application:
+    name: nms-ask-dashboard
+  config:
+    # The repo's .env (DATABASE_URL, PORT, …) — its KEY=value lines are valid properties.
+    import: optional:file:../.env[.properties]
+  flyway:
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+  web:
+    resources:
+      # The Angular build (npm run build in frontend/). Served from disk so a rebuild shows without a restart.
+      static-locations: file:${app.frontend-dist}/, classpath:/static/
+  mvc:
+    async:
+      request-timeout: -1 # /api/events is a long-lived SSE stream
+
+app:
+  # Where the API is reachable, as handed to Claude in links and to the panel.
+  public-url: ${API_URL:http://localhost:${server.port}}
+  auth:
+    # Off only for local experiments: every caller then acts as one user who sees every tenant.
+    enabled: ${AUTH_ENABLED:true}
+    # The Keycloak realm (docker compose). Swap for Okta or Entra ID by pointing this at their issuer.
+    issuer: ${OIDC_ISSUER:http://localhost:8080/realms/nms}
+    # Where the signing keys are fetched. Differs from the issuer only when the backend reaches Keycloak by another
+    # name than the browser does — in docker compose that is http://keycloak:8080.
+    jwks-uri: ${OIDC_JWKS_URI:${app.auth.issuer}/protocol/openid-connect/certs}
+    # Tokens must name this API in `aud` — a token issued for something else is refused.
+    audience: ${OIDC_AUDIENCE:nms-ask-dashboard}
+    # The public client the Angular app signs in with.
+    client-id: ${OIDC_CLIENT_ID:nms-dashboard}
+  frontend-dist: ${FRONTEND_DIST:../frontend/dist/dashboard/browser}
+  panel-file: ${PANEL_FILE:../frontend/dist/panel/index.html}
+  embedded-data-dir: ${EMBEDDED_PG_DIR:.pgdata}
+  embedded-port: ${EMBEDDED_PG_PORT:5434}
+  seed: 443929
+  # PNG of every chart, for hosts that cannot frame the MCP App panel.
+  chart-images: ${CHART_IMAGES:true}
+
+logging:
+  level:
+    io.modelcontextprotocol: warn

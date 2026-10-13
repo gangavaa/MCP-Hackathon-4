@@ -1,0 +1,44 @@
+{
+  "name": "nms-ask-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ask the Dashboard — an MCP App that turns plain-English questions about the NMS estate into live charts, and pins them to a live dashboard.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@modelcontextprotocol/core": "^2.3.1",
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "echarts": "^6.1.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.3"
+  },
+  "scripts": {
+    "api": "node src/api/server.ts",
+    "mcp": "node src/mcp/server.ts",
+    "build": "vite build --config vite.panel.config.ts && vite build --config vite.dashboard.config.ts",
+    "dev:dashboard": "vite --config vite.dashboard.config.ts",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "node src/api/reset.ts",
+    "smoke": "node scripts/smoke.ts",
+    "typecheck": "tsc -p .",
+    "test": "vitest run",
+    "setup:claude": "node scripts/claude-desktop.ts"
+  }
+}

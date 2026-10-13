@@ -1,0 +1,15 @@
+node_modules/
+.env
+*.log
+
+# backend
+backend/target/
+backend/.pgdata/
+
+# frontend
+frontend/dist/
+frontend/.angular/
+
+# the TypeScript prototype's generated files
+legacy-node/dist/
+legacy-node/.pglite/

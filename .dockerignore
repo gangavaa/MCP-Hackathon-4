@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.angular
+backend/target
+backend/.pgdata
+legacy-node
+.env
+.git

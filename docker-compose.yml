@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: nms
+      POSTGRES_PASSWORD: nms
+      POSTGRES_DB: nms_dashboard
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nms -d nms_dashboard']
+      interval: 2s
+      retries: 20
+
+  # Sign-in for the dashboard, the API and MCP clients. The `nms` realm — clients, demo users, tenant claims — is
+  # imported from keycloak/nms-realm.json on start. Admin console: http://localhost:8080 (admin / admin).
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: 'true'
+      KC_HOSTNAME: http://localhost:8080
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ['CMD-SHELL', "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 3s
+      retries: 60
+
+  # The backend + Angular build. Not started by `npm run db:up`; run it with `docker compose --profile app up -d --build`.
+  app:
+    profiles: ['app']
+    build: .
+    environment:
+      DATABASE_URL: postgres://nms:nms@postgres:5432/nms_dashboard
+      PORT: 4300
+      API_URL: http://localhost:4300
+      # Browsers and Claude reach Keycloak at localhost:8080, so that is the issuer in every token. The container
+      # reaches it by its service name instead.
+      OIDC_ISSUER: http://localhost:8080/realms/nms
+      OIDC_JWKS_URI: http://keycloak:8080/realms/nms/protocol/openid-connect/certs
+    ports:
+      - '4300:4300'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+volumes:
+  pgdata:

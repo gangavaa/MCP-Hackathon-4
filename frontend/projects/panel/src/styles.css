@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@import '../../../shared/theme.css';
+@import '../../../shared/tokens.css';
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: transparent;
+}

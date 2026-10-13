@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@import '../../../shared/theme.css';
+@import '../../../shared/tokens.css';
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+/* A widget just pinned from the chat: rises in, glows in the accent colour, settles. */
+.landed {
+  animation: land 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2), glow 2.6s ease-out;
+}
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+@keyframes glow {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent), 0 10px 30px rgb(223 17 126 / 0.25);
+  }
+}
+@keyframes pulse-dot {
+  70% {
+    box-shadow: 0 0 0 7px rgb(49 196 70 / 0);
+  }
+}

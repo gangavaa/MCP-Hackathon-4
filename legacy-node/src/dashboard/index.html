@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NMS · Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="logo"><span class="logo-mark">NMS</span> Network Management System</div>
+      <div class="topbar-right">
+        <span id="live" class="live" title="Live updates">Connecting…</span>
+        <button id="theme" class="icon-btn" type="button" aria-label="Toggle dark mode">◐</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <p class="crumb">Dashboards › Estate overview</p>
+          <h1>Estate overview</h1>
+        </div>
+        <span id="count" class="count"></span>
+      </div>
+
+      <section id="empty" class="empty-state" hidden>
+        <div class="empty-icon">✦</div>
+        <h2>Ask Claude to build this dashboard</h2>
+        <p>Try “Which farms have the most offline devices?” — then press <strong>Pin to dashboard</strong>.<br />Or: “Build me a morning overview dashboard.”</p>
+      </section>
+
+      <section id="grid" class="grid" aria-live="polite"></section>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

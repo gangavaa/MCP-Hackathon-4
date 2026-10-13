@@ -1,0 +1,22 @@
+/*
+ * nms-core-ui's design tokens for Tailwind v4 (its src/styles.css @theme), so `bg-surface`, `text-text-secondary`,
+ * `bg-accent`… mean what they mean in the product. tokens.css, imported after, swaps the surface colours under
+ * [data-theme='dark'].
+ */
+@theme {
+  --font-sans: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: 'Baskervville', Georgia, serif;
+  --color-header: #004a75;
+  --color-link: #0075c3;
+  --color-accent: #df117e;
+  --color-accent-hover: #612594;
+  --color-wizard: #23885c;
+  --color-status-online: #31c446;
+  --color-status-offline: #d84c57;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f3f4f6;
+  --color-bg-primary: #f2f4f7;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #637085;
+  --color-border: #e5e7eb;
+}
