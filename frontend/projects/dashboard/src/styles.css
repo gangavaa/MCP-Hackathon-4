@@ -26,6 +26,14 @@ body {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent), 0 10px 30px rgb(223 17 126 / 0.25);
   }
 }
+@keyframes progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
 @keyframes pulse-dot {
   70% {
     box-shadow: 0 0 0 7px rgb(49 196 70 / 0);

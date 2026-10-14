@@ -6,6 +6,7 @@ import { PALETTE, SEMANTIC } from '@shared/render';
 import type { ChartData, ChartSpec, QueryResult } from '@shared/types';
 import { ApiService } from '../core/api.service';
 import { ThemeService } from '../core/theme.service';
+import { Spinner } from '../core/loading';
 import { Topbar } from '../core/topbar';
 
 const REFRESH_MS = 60_000;
@@ -57,7 +58,7 @@ const ALERTS_BY_SEVERITY: ChartSpec = {
  */
 @Component({
   selector: 'nms-estate-dashboard-page',
-  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe],
+  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe, Spinner],
   template: `
     <nms-topbar />
     <main class="mx-auto max-w-[1600px] space-y-6 p-6">
@@ -143,7 +144,13 @@ const ALERTS_BY_SEVERITY: ChartSpec = {
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="px-3 py-8 text-center text-text-secondary">{{ overview() ? 'No tenants to show.' : 'Loading…' }}</td>
+                  <td colspan="10" class="px-3 py-8 text-center text-text-secondary">
+                    @if (overview()) {
+                      No tenants to show.
+                    } @else {
+                      <nms-spinner label="Loading tenants…" />
+                    }
+                  </td>
                 </tr>
               }
             </tbody>

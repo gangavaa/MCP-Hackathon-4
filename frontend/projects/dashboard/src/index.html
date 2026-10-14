@@ -5,8 +5,73 @@
     <title>NMS · Dashboard</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      if (localStorage.getItem('nms-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+    </script>
+    <style>
+      /* Shown until Angular renders the first page: sign-in and the first API call wait on the backend. */
+      .boot {
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 14px;
+        min-height: 100vh;
+        font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        color: #637085;
+        background: #f2f4f7;
+        text-align: center;
+      }
+      [data-theme='dark'] .boot {
+        color: #8a96ab;
+        background: #10131f;
+      }
+      .boot-badge {
+        padding: 2px 10px;
+        border-radius: 6px;
+        background: #df117e;
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .boot-ring {
+        width: 34px;
+        height: 34px;
+        border: 3px solid rgb(223 17 126 / 0.2);
+        border-top-color: #df117e;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      .boot p {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      .boot-slow {
+        max-width: 22rem;
+        font-size: 0.8rem !important;
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .boot-slow.shown {
+        opacity: 1;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
-    <app-root></app-root>
+    <app-root>
+      <div class="boot" role="status">
+        <span class="boot-badge">NMS</span>
+        <div class="boot-ring" aria-hidden="true"></div>
+        <p>Loading the dashboard…</p>
+        <p class="boot-slow" id="boot-slow">Waking up the server — after a quiet spell this can take up to a minute.</p>
+      </div>
+    </app-root>
+    <script>
+      setTimeout(() => document.getElementById('boot-slow')?.classList.add('shown'), 4000);
+    </script>
   </body>
 </html>

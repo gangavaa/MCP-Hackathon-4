@@ -40,7 +40,7 @@ export class AuthService {
 
   /** Runs before the app starts: finishes a sign-in coming back from the issuer, or starts one. */
   async init(): Promise<void> {
-    this.#config = await (await fetch('/api/auth/config')).json();
+    this.#config = await untilAnswered('/api/auth/config');
     if (!this.#config.enabled) return;
     this.enabled.set(true);
     this.#discovery = await (await fetch(`${this.#config.issuer}/.well-known/openid-configuration`)).json();
@@ -140,6 +140,18 @@ export class AuthService {
 
   #valid(): boolean {
     return !!this.#tokens && this.#tokens.expires_at - Date.now() > 30_000;
+  }
+}
+
+/** The first call waits on a backend that may be asleep: retried until it answers, for up to two minutes. */
+async function untilAnswered<T>(url: string): Promise<T> {
+  const giveUpAt = Date.now() + 120_000;
+  for (;;) {
+    const res = await fetch(url).catch(() => undefined);
+    if (res?.ok) return res.json();
+    if (res && res.status < 500) throw new Error(`${url} answered ${res.status}`);
+    if (Date.now() > giveUpAt) throw new Error(`${url} did not answer`);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
 

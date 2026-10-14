@@ -5,6 +5,7 @@ import { ChartComponent } from '@shared/chart.component';
 import { humanize } from '@shared/render';
 import { ApiService, type Device, type FarmDetail, type Issue } from '../core/api.service';
 import { ThemeService } from '../core/theme.service';
+import { Spinner } from '../core/loading';
 import { Topbar } from '../core/topbar';
 import { SEVERITIES, StatusDot, TableSort, emptyCounts, isSeverity, localChart, severityColor, severityTint } from './estate-ui';
 
@@ -30,7 +31,7 @@ const SEVERITY_RANK: Record<string, number> = { CRITICAL: 1, HIGH: 2, MEDIUM: 3,
  */
 @Component({
   selector: 'nms-farm-page',
-  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe, NgTemplateOutlet, StatusDot],
+  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe, NgTemplateOutlet, StatusDot, Spinner],
   template: `
     <nms-topbar />
     <main class="mx-auto max-w-[1600px] space-y-4 p-6">
@@ -201,7 +202,7 @@ const SEVERITY_RANK: Record<string, number> = { CRITICAL: 1, HIGH: 2, MEDIUM: 3,
           }
         }
       } @else if (!error()) {
-        <p class="text-sm text-text-secondary">Loading…</p>
+        <nms-spinner class="py-6 text-sm" label="Loading farm…" />
       }
     </main>
 

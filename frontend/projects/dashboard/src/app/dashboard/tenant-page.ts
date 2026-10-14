@@ -5,6 +5,7 @@ import { ChartComponent } from '@shared/chart.component';
 import type { ChartData, Row } from '@shared/types';
 import { ApiService, type FarmRow, type Tenant } from '../core/api.service';
 import { ThemeService } from '../core/theme.service';
+import { Spinner } from '../core/loading';
 import { Topbar } from '../core/topbar';
 import {
   CONNECTIVITY,
@@ -38,7 +39,7 @@ interface AttentionRow {
  */
 @Component({
   selector: 'nms-tenant-page',
-  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe, SeverityBar, StatusDot],
+  imports: [Topbar, RouterLink, ChartComponent, DatePipe, DecimalPipe, SeverityBar, StatusDot, Spinner],
   template: `
     <nms-topbar />
     <main class="mx-auto max-w-[1600px] space-y-6 p-6">
@@ -122,7 +123,13 @@ interface AttentionRow {
                 </a>
               </li>
             } @empty {
-              <li class="px-2 py-6 text-center text-sm text-text-secondary">{{ farms().length ? 'No farms need attention' : 'Loading…' }}</li>
+              <li class="px-2 py-6 text-center text-sm text-text-secondary">
+                @if (farms().length) {
+                  No farms need attention
+                } @else {
+                  <nms-spinner />
+                }
+              </li>
             }
           </ol>
         </section>
@@ -168,7 +175,13 @@ interface AttentionRow {
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="14" class="px-3 py-8 text-center text-text-secondary">{{ tenant() ? 'No farms.' : 'Loading…' }}</td>
+                  <td colspan="14" class="px-3 py-8 text-center text-text-secondary">
+                    @if (tenant()) {
+                      No farms.
+                    } @else {
+                      <nms-spinner label="Loading farms…" />
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
