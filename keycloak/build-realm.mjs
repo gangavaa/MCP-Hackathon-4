@@ -92,7 +92,7 @@ const attributeMapper = (name, claim, multivalued) => ({
 });
 await api('POST', `/realms/${REALM}/client-scopes`, {
   name: 'nms',
-  description: 'NMS Ask the Dashboard: audience, tenants, access level',
+  description: 'NMS Dashboard: audience, tenants, access level',
   protocol: 'openid-connect',
   attributes: { 'include.in.token.scope': 'false', 'display.on.consent.screen': 'true', 'consent.screen.text': 'Read your NMS estate data and manage your dashboard' },
   protocolMappers: [
@@ -118,14 +118,14 @@ const publicClient = (clientId, name, extra) => ({
   defaultClientScopes: ['basic', 'profile', 'email', 'roles', 'web-origins', 'acr', 'nms'],
   ...extra,
 });
-await api('POST', `/realms/${REALM}/clients`, publicClient('nms-dashboard', 'NMS Ask the Dashboard (web)', {
+await api('POST', `/realms/${REALM}/clients`, publicClient('nms-dashboard', 'NMS Dashboard (web)', {
   standardFlowEnabled: true,
   rootUrl: 'http://localhost:4300',
   redirectUris: ['http://localhost:4300/*', 'http://localhost:4200/*'],
   webOrigins: ['http://localhost:4300', 'http://localhost:4200'],
   attributes: { 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': 'http://localhost:4300/*##http://localhost:4200/*' },
 }));
-await api('POST', `/realms/${REALM}/clients`, publicClient('nms-bridge', 'NMS Ask the Dashboard (Claude Desktop bridge)', {
+await api('POST', `/realms/${REALM}/clients`, publicClient('nms-bridge', 'NMS Dashboard (Claude Desktop bridge)', {
   // The bridge opens the sign-in page and takes the code on http://127.0.0.1:<any port>/callback (RFC 8252), with
   // PKCE; the device flow stays on for machines without a local browser.
   standardFlowEnabled: true,

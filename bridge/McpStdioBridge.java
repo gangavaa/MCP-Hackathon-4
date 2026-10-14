@@ -40,12 +40,12 @@ import java.util.stream.Collectors;
  * follows it — protected resource metadata, then the authorization server's discovery document — and signs the user
  * in the way desktop apps do (RFC 8252): it opens the browser on the sign-in page, receives the code on a one-off
  * loopback port (http://127.0.0.1:PORT/callback), exchanges it with PKCE, and keeps the refresh token in
- * {@code ~/.nms-ask-dashboard/bridge-token} (readable by this user only), so later sessions start signed in.
+ * {@code ~/.nms-dashboard/bridge-token} (readable by this user only), so later sessions start signed in.
  * {@code NMS_LOGIN=device} uses the device flow instead (sign-in page with a code, for machines without a local
  * browser); {@code $NMS_TOKEN} skips all of it with a fixed access token, for scripts and tests.
  *
  * <p>Run as a single-file program — no build, no dependencies: {@code java bridge/McpStdioBridge.java [url]}.
- * The URL defaults to {@code $NMS_MCP_URL}, then {@code http://localhost:4300/mcp}. Logs go to stderr; stdout is the
+ * The URL defaults to {@code $NMS_MCP_URL}, then {@code http://localhost:4301/mcp}. Logs go to stderr; stdout is the
  * MCP channel.
  */
 public final class McpStdioBridge {
@@ -60,7 +60,7 @@ public final class McpStdioBridge {
   public static void main(String[] args) throws Exception {
     boolean loginOnly = args.length > 0 && args[0].equals("--login");
     String[] rest = loginOnly ? java.util.Arrays.copyOfRange(args, 1, args.length) : args;
-    url = rest.length > 0 ? rest[0] : System.getenv().getOrDefault("NMS_MCP_URL", "http://localhost:4300/mcp");
+    url = rest.length > 0 ? rest[0] : System.getenv().getOrDefault("NMS_MCP_URL", "http://localhost:4301/mcp");
     if (loginOnly) {
       login();
       return;
@@ -119,7 +119,7 @@ public final class McpStdioBridge {
         reply(body.replace("\n", ""));
       }
     } catch (java.net.ConnectException e) {
-      reply(error(message, "The NMS backend is not running at " + url + " — start it with `npm start` in nms-ask-dashboard."));
+      reply(error(message, "The NMS backend is not running at " + url + " — start it with `npm start` in nms-dashboard."));
     } catch (Exception e) {
       log(e.toString());
       reply(error(message, "Bridge error: " + e.getMessage()));
@@ -141,7 +141,9 @@ public final class McpStdioBridge {
   /** Tokens for the backend, from the authorization server it names. One sign-in at a time, shared by all calls. */
   static final class Auth {
 
-    private static final Path STORE = Path.of(System.getProperty("user.home"), ".nms-ask-dashboard", "bridge-token");
+    private static final Path STORE = Path.of(System.getProperty("user.home"), ".nms-dashboard", "bridge-token");
+    /** Where the sign-in was kept before the project was renamed — read once, then saved to STORE. */
+    private static final Path LEGACY_STORE = Path.of(System.getProperty("user.home"), ".nms-ask-dashboard", "bridge-token");
     private final String clientId = System.getenv().getOrDefault("NMS_CLIENT_ID", "nms-bridge");
     private final String fixed = blankToNull(System.getenv("NMS_TOKEN"));
     private String accessToken;
@@ -153,8 +155,9 @@ public final class McpStdioBridge {
 
     Auth() {
       try {
-        if (Files.exists(STORE)) {
-          String saved = Files.readString(STORE);
+        Path from = Files.exists(STORE) ? STORE : LEGACY_STORE;
+        if (Files.exists(from)) {
+          String saved = Files.readString(from);
           refreshToken = field(saved, "refresh_token");
           tokenEndpoint = field(saved, "token_endpoint");
           deviceEndpoint = field(saved, "device_endpoint");
@@ -389,6 +392,6 @@ public final class McpStdioBridge {
   }
 
   private static void log(String text) {
-    System.err.println("nms-ask-dashboard bridge: " + text);
+    System.err.println("nms-dashboard bridge: " + text);
   }
 }

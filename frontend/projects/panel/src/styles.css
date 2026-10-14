@@ -8,3 +8,17 @@ body {
   color: var(--color-text-primary);
   background: transparent;
 }
+
+/* MSD's brand on the chat panel: MSD Teal for the badge, the insight, the selected chart type and the buttons. */
+:root {
+  --color-header: #00857c;
+  --color-accent: #00857c;
+  --color-accent-hover: #005c55;
+  --color-link: #00857c;
+}
+[data-theme='dark'] {
+  --color-link: #6eceb2;
+}
+[data-theme='dark'] .kpi-value {
+  color: #6eceb2;
+}

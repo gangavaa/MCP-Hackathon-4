@@ -37,7 +37,7 @@ const TYPE_LABELS: Record<ChartType, string> = { bar: 'Bar', hbar: 'Ranking', li
     <main class="relative flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-4" [class.opacity-90]="busy()">
       <header>
         <div class="text-[0.72rem] font-semibold tracking-wider text-text-secondary uppercase">
-          <span class="mr-1 rounded bg-header px-1.5 py-px text-white">NMS</span> Ask the Dashboard
+          <span class="mr-1 rounded bg-header px-1.5 py-px text-white">NMS</span> Dashboard
         </div>
         <h1 class="mt-1.5 mb-0 text-lg font-bold">{{ title() }}</h1>
         @if (insight()) {
@@ -65,7 +65,7 @@ const TYPE_LABELS: Record<ChartType, string> = { bar: 'Bar', hbar: 'Ranking', li
             <button
               type="button"
               class="cursor-pointer rounded-md border-0 px-3 py-1 text-[0.82rem] font-medium"
-              [class]="t === type() ? 'bg-surface text-text-primary shadow-sm' : 'bg-transparent text-text-secondary'"
+              [class]="t === type() ? 'bg-accent text-white shadow-sm' : 'bg-transparent text-text-secondary hover:text-text-primary'"
               [attr.aria-pressed]="t === type()"
               (click)="type.set(t)"
             >
@@ -102,7 +102,7 @@ const TYPE_LABELS: Record<ChartType, string> = { bar: 'Bar', hbar: 'Ranking', li
 export class App {
   protected readonly typeLabels = TYPE_LABELS;
   protected readonly humanize = humanize;
-  protected readonly btn = 'cursor-pointer rounded-lg border border-border bg-surface px-3.5 py-2 text-[0.85rem] font-semibold text-text-primary hover:bg-surface-hover disabled:cursor-default';
+  protected readonly btn = 'cursor-pointer rounded-md border-0 bg-accent px-3.5 py-2 text-[0.85rem] font-semibold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-60';
 
   protected readonly stack = signal<Level[]>([]);
   protected readonly type = signal<ChartType>('bar');
@@ -116,7 +116,7 @@ export class App {
     const level = this.current();
     return level ? toModel(level.data) : undefined;
   });
-  protected readonly title = computed(() => this.current()?.data.spec.title ?? this.#requested()?.title ?? 'Ask the Dashboard');
+  protected readonly title = computed(() => this.current()?.data.spec.title ?? this.#requested()?.title ?? 'NMS Dashboard');
   protected readonly insight = computed(() => (this.stack().length === 1 ? this.current()?.data.spec.insight : undefined));
   protected readonly types = computed<ChartType[]>(() => {
     const model = this.#model();
@@ -138,7 +138,7 @@ export class App {
   #apiUrl = 'http://localhost:4300';
   #fallback: ReturnType<typeof setTimeout> | undefined;
   #toastTimer: ReturnType<typeof setTimeout> | undefined;
-  readonly #app = new McpApp({ name: 'NMS Ask the Dashboard', version: '0.2.0' });
+  readonly #app = new McpApp({ name: 'NMS Dashboard', version: '0.2.0' });
 
   constructor() {
     /*

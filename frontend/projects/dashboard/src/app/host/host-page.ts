@@ -103,7 +103,7 @@ export class HostPage {
 
     const iframe = document.createElement('iframe');
     iframe.sandbox.add('allow-scripts');
-    iframe.title = 'Ask the Dashboard panel';
+    iframe.title = 'NMS Dashboard chat panel';
     iframe.className = 'h-[560px] w-full border-0 bg-transparent';
     this.slot().nativeElement.replaceChildren(iframe);
 

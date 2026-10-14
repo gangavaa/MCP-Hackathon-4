@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "nms-ask-dashboard": {
+    "nms-dashboard": {
       "type": "http",
-      "url": "http://localhost:4300/mcp"
+      "url": "http://localhost:4301/mcp"
     }
   }
 }

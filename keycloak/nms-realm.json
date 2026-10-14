@@ -714,7 +714,7 @@
     {
       "id": "c8098edc-9951-4d61-9dc8-a08b27910918",
       "clientId": "nms-bridge",
-      "name": "NMS Ask the Dashboard (Claude Desktop bridge)",
+      "name": "NMS Dashboard (Claude Desktop bridge)",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
@@ -800,7 +800,7 @@
     {
       "id": "6dffdc0f-8282-4cff-8471-2c6dd25e7e25",
       "clientId": "nms-dashboard",
-      "name": "NMS Ask the Dashboard (web)",
+      "name": "NMS Dashboard (web)",
       "rootUrl": "http://localhost:4300",
       "adminUrl": "http://localhost:4300",
       "surrogateAuthRequired": false,
@@ -1076,7 +1076,7 @@
     {
       "id": "ac936caf-0ff3-40d1-aaee-df49f035d466",
       "name": "nms",
-      "description": "NMS Ask the Dashboard: audience, tenants, access level",
+      "description": "NMS Dashboard: audience, tenants, access level",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",

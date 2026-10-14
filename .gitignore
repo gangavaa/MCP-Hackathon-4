@@ -6,10 +6,9 @@ node_modules/
 backend/target/
 backend/.pgdata/
 
+# MCP server
+mcp-server/target/
+
 # frontend
 frontend/dist/
 frontend/.angular/
-
-# the TypeScript prototype's generated files
-legacy-node/dist/
-legacy-node/.pglite/

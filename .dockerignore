@@ -3,6 +3,6 @@
 **/.angular
 backend/target
 backend/.pgdata
-legacy-node
 .env
 .git
+mcp-server/target

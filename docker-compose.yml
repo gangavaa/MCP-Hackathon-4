@@ -1,3 +1,6 @@
+# One name for the containers and volumes, whatever the folder is called.
+name: nms-dashboard
+
 services:
   postgres:
     image: postgres:17
@@ -33,10 +36,13 @@ services:
       interval: 3s
       retries: 60
 
-  # The backend + Angular build. Not started by `npm run db:up`; run it with `docker compose --profile app up -d --build`.
+  # The backend + Angular build, and the MCP server in front of it. Not started by `npm run db:up`; run them with
+  # `docker compose --profile app up -d --build`.
   app:
     profiles: ['app']
-    build: .
+    build:
+      context: .
+      target: app
     environment:
       DATABASE_URL: postgres://nms:nms@postgres:5432/nms_dashboard
       PORT: 4300
@@ -45,6 +51,7 @@ services:
       # reaches it by its service name instead.
       OIDC_ISSUER: http://localhost:8080/realms/nms
       OIDC_JWKS_URI: http://keycloak:8080/realms/nms/protocol/openid-connect/certs
+      OIDC_ACCOUNT_URI: http://keycloak:8080/realms/nms/account
     ports:
       - '4300:4300'
     depends_on:
@@ -52,6 +59,23 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+
+  # Claude connects here (http://localhost:4301/mcp). Every tool is a call to the app's API with the user's token.
+  mcp:
+    profiles: ['app']
+    build:
+      context: .
+      target: mcp
+    environment:
+      MCP_PUBLIC_URL: http://localhost:4301
+      NMS_API_URL: http://app:4300
+      DASHBOARD_URL: http://localhost:4300
+      OIDC_ISSUER: http://localhost:8080/realms/nms
+      OIDC_JWKS_URI: http://keycloak:8080/realms/nms/protocol/openid-connect/certs
+    ports:
+      - '4301:4301'
+    depends_on:
+      - app
 
 volumes:
   pgdata:

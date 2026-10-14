@@ -1,18 +1,19 @@
 {
-  "name": "nms-ask-dashboard",
+  "name": "nms-dashboard",
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Ask the Dashboard \u2014 Spring Boot backend (REST + MCP) and Angular frontend. Root scripts drive both.",
+  "description": "NMS Dashboard \u2014 Spring Boot REST backend, the MCP server in front of it, and the Angular frontend. Root scripts drive all three.",
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
-    "build": "npm --prefix frontend run build && mvn -q -B -f backend/pom.xml package -DskipTests",
+    "build": "npm --prefix frontend run build && mvn -q -B -f backend/pom.xml package -DskipTests && mvn -q -B -f mcp-server/pom.xml package -DskipTests",
     "start": "cd backend && mvn -q spring-boot:run",
     "start:reset": "cd backend && mvn -q spring-boot:run -Dspring-boot.run.arguments=--reset",
+    "start:mcp": "cd mcp-server && mvn -q spring-boot:run",
     "dev:frontend": "npm --prefix frontend start",
-    "test": "mvn -q -B -f backend/pom.xml test",
+    "test": "mvn -q -B -f backend/pom.xml test && mvn -q -B -f mcp-server/pom.xml test",
     "smoke": "node scripts/smoke.ts",
     "setup:claude": "node scripts/claude-desktop.ts",
     "db:up": "docker compose up -d --wait",

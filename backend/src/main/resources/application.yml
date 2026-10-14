@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: nms-ask-dashboard
+    name: nms-dashboard
   config:
     # The repo's .env (DATABASE_URL, PORT, …) — its KEY=value lines are valid properties.
     import: optional:file:../.env[.properties]
@@ -20,7 +20,7 @@ spring:
       request-timeout: -1 # /api/events is a long-lived SSE stream
 
 app:
-  # Where the API is reachable, as handed to Claude in links and to the panel.
+  # Where the API is reachable from outside — used in links the app hands out.
   public-url: ${API_URL:http://localhost:${server.port}}
   auth:
     # Off only for local experiments: every caller then acts as one user who sees every tenant.
@@ -30,17 +30,20 @@ app:
     # Where the signing keys are fetched. Differs from the issuer only when the backend reaches Keycloak by another
     # name than the browser does — in docker compose that is http://keycloak:8080.
     jwks-uri: ${OIDC_JWKS_URI:${app.auth.issuer}/protocol/openid-connect/certs}
-    # Tokens must name this API in `aud` — a token issued for something else is refused.
+    # Keycloak's Account API, where a user ends their own session (POST /api/auth/logout). Like jwks-uri, the issuer
+    # as this backend reaches it — in docker compose http://keycloak:8080/realms/nms/account.
+    account-uri: ${OIDC_ACCOUNT_URI:${app.auth.issuer}/account}
+    # Tokens must name this API in `aud` — a token issued for something else is refused. The Keycloak client id keeps
+    # the project's first name, as renaming it in Keycloak would invalidate every sign-in.
     audience: ${OIDC_AUDIENCE:nms-ask-dashboard}
     # The public client the Angular app signs in with.
     client-id: ${OIDC_CLIENT_ID:nms-dashboard}
   frontend-dist: ${FRONTEND_DIST:../frontend/dist/dashboard/browser}
+  # The chat panel's build (one HTML file), served at /panel.html for the dashboard's test host (/host).
   panel-file: ${PANEL_FILE:../frontend/dist/panel/index.html}
   embedded-data-dir: ${EMBEDDED_PG_DIR:.pgdata}
   embedded-port: ${EMBEDDED_PG_PORT:5434}
   seed: 443929
-  # PNG of every chart, for hosts that cannot frame the MCP App panel.
-  chart-images: ${CHART_IMAGES:true}
 
 logging:
   level:

@@ -21,10 +21,10 @@ if (!javaHome) throw new Error('No JDK found — set JAVA_HOME to a JDK 21+.');
 const entry = {
   command: join(javaHome, 'bin', 'java'),
   args: [fileURLToPath(new URL('../bridge/McpStdioBridge.java', import.meta.url))],
-  env: { NMS_MCP_URL: 'http://localhost:4300/mcp' },
+  env: { NMS_MCP_URL: 'http://localhost:4301/mcp' },
 };
 
-console.log(JSON.stringify({ mcpServers: { 'nms-ask-dashboard': entry } }, null, 2));
+console.log(JSON.stringify({ mcpServers: { 'nms-dashboard': entry } }, null, 2));
 
 if (process.argv.includes('--write')) {
   for (const file of CONFIGS.length ? CONFIGS : [CONFIG]) {
@@ -33,11 +33,12 @@ if (process.argv.includes('--write')) {
     if (raw !== '{}') await copyFile(file, `${file}.bak`);
     const servers = { ...config.mcpServers };
     delete servers.mcpServers; // a block pasted one level too deep — Desktop skips it as an invalid server
-    config.mcpServers = { ...servers, 'nms-ask-dashboard': entry };
+    delete servers['nms-ask-dashboard']; // the connector's name before the project was renamed
+    config.mcpServers = { ...servers, 'nms-dashboard': entry };
     await writeFile(file, `${JSON.stringify(config, null, 2)}\n`);
     console.log(`Wrote ${file} (backup: ${file}.bak)`);
   }
   console.log('Quit Claude Desktop with ⌘Q and reopen it to load the connector.');
 } else {
-  console.log(`\nAdd the "nms-ask-dashboard" entry inside the existing "mcpServers" of ${CONFIG}, or rerun with --write to merge it in.`);
+  console.log(`\nAdd the "nms-dashboard" entry inside the existing "mcpServers" of ${CONFIG}, or rerun with --write to merge it in.`);
 }

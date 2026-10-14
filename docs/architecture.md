@@ -1,4 +1,4 @@
-# NMS Ask the Dashboard: architecture
+# NMS Dashboard: architecture
 
 This document has two parts:
 - **High-level design (HLD):** the system's parts and how they connect, including how each kind of client signs in.
@@ -157,7 +157,7 @@ sequenceDiagram
   U->>K: sign in + approve
   B->>K: poll /token (device_code)
   K-->>B: access + refresh token
-  B->>B: save refresh token ~/.nms-ask-dashboard/bridge-token (0600)
+  B->>B: save refresh token ~/.nms-dashboard/bridge-token (0600)
   B->>S: retry with Bearer
   S-->>B: result → stdout → Claude Desktop
   Note over B,K: Later sessions refresh silently. npm run login signs in ahead of time.
@@ -172,7 +172,7 @@ flowchart LR
       KC["keycloak:26.8.0 :8080<br/>imports keycloak/nms-realm.json"]
       PG[("postgres:17 :5433")]
     end
-    J["java -jar ask-dashboard.jar :4300<br/>(serves frontend/dist)"]
+    J["java -jar nms-dashboard.jar :4300<br/>(serves frontend/dist)"]
     BR["bridge (per Claude Desktop session)"]
     CD["Claude Desktop"]
     BROWSER["Browser"]
@@ -204,13 +204,21 @@ classDiagram
 
   namespace security {
     class SecurityConfig {
-      +securityFilterChain(HttpSecurity)
+      +securityFilterChain(HttpSecurity) /api/**
       +jwtDecoder() JwtDecoder
-      ~entryPoint() 401 + resource_metadata
     }
-    class ProtectedResourceController {
-      GET /.well-known/oauth-protected-resource/mcp
+    class AuthConfigController {
       GET /api/auth/config
+    }
+    class McpSecurityConfig {
+      mcp-server: /mcp
+      same JWT checks, 401 + resource_metadata
+    }
+    class NmsApiClient {
+      mcp-server: calls /api/* with the caller's token
+    }
+    class McpAuthMetadataController {
+      GET /.well-known/oauth-protected-resource/mcp
     }
     class CurrentUser {
       +get() NmsUser
@@ -297,7 +305,8 @@ classDiagram
     }
   }
 
-  SecurityConfig ..> ProtectedResourceController : 401 points to
+  NmsApiClient ..> SecurityConfig : forwards the token it checks
+  McpSecurityConfig ..> McpAuthMetadataController : 401 points to
   CurrentUser ..> NmsUser : builds from Jwt
   NmsUser *-- TenantScope
   ApiController --> CurrentUser

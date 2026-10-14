@@ -1,4 +1,4 @@
-# NMS · Ask the Dashboard
+# NMS Dashboard
 
 Ask a question about the NMS estate in plain English. A live, interactive chart appears **inside the chat**. Click it to drill down. Every answer stays in the chat. The NMS dashboard at http://localhost:4300/ is a **fixed** page, like nms-core-ui's, and nothing is added to it from the chat.
 
@@ -8,9 +8,13 @@ The project is built on [MCP Apps](https://github.com/modelcontextprotocol/ext-a
 Claude Desktop ──stdio──► bridge/McpStdioBridge.java ──HTTP──┐
 Claude Code ───────────────────────────────────HTTP──────────┤
                                                               ▼
-                        backend/ (Spring Boot 3, Java 21) — one process, port 4300
-                          /mcp          MCP server: 4 tools + the panel resource
-                          /api/*        REST API
+                        mcp-server/ (Spring Boot 3, Java 21) — port 4301
+                          /mcp          MCP gateway: 4 tools + the panel resource. No data, no SQL.
+                                │
+                                │  HTTP, with the signed-in user's own token
+                                ▼
+                        backend/ (Spring Boot 3, Java 21) — port 4300
+                          /api/*        REST API — knows nothing about MCP
                           /, /host      the Angular build (frontend/dist)
                                 │
                                 ▼
@@ -24,11 +28,34 @@ frontend/ (Angular 22 + Tailwind v4)
 
 | Part | What it is |
 |---|---|
-| `backend/` | Spring Boot 3.5, Java 21. The only process that touches Postgres. It holds the semantic query layer (`query/`), the seed generator (`seed/`), the REST API (`api/`), and the MCP server with its PNG chart renderer (`mcp/`). Flyway owns the schema. |
+| `mcp-server/` | Spring Boot 3.5, Java 21. The MCP server Claude talks to: a **gateway in front of the REST API**. Each tool is one or two calls to `backend/`'s `/api` (`api/NmsApiClient`), made with the caller's own access token, so the API applies the same tenant scope and access checks as for the dashboard. It adds only what a chat needs: tool descriptions and schemas, rows as text for the model, a PNG of each chart (`ChartImageRenderer`) and the panel. API errors become tool errors in the API's own words. |
+| `backend/` | Spring Boot 3.5, Java 21. The REST API and the only process that touches Postgres; it has no MCP code. It's organised by domain (see [Backend structure](#backend-structure)). Flyway owns the schema. |
 | `frontend/` | An Angular 22 workspace with two apps that share one chart component. The dashboard (`estate-dashboard-page.ts`) is fixed, laid out after nms-core-ui's: severity summary cards, the tenants overview, alerts by severity and the specie groups. It reads `/api/query` and `/api/chart` and refreshes every minute. A tenant's name opens its page (`/tenants/:id`: farm overview, alert summary, issue definitions, farms needing attention, every farm), and a farm opens its farm card (`/farms/:id`: identity, alerts by severity, devices by type, then Overview, Devices, Issues, Statistics and Properties tabs). Both pages read `/api/tenants/:id` and `/api/farms/:id`, which are scoped to the user's tenants like every query. |
-| `bridge/` | A single-file Java program that Claude Desktop launches. It relays stdio to the backend's `/mcp`, so every Desktop session shares one backend instead of starting its own. |
+| `bridge/` | A single-file Java program that Claude Desktop launches. It relays stdio to the MCP server's `/mcp`, so every Desktop session shares one server instead of starting its own. |
 | `scripts/` | `smoke.ts` (end-to-end check over MCP) and `claude-desktop.ts` (Desktop setup) |
-| `legacy-node/` | The first, TypeScript version. Kept for reference only; safe to delete. |
+
+## Backend structure
+
+The backend has one package per domain, under `com.nms.dashboard`. Each domain is split into the same layers:
+
+| Layer | Holds | Depends on |
+|---|---|---|
+| `domain/` | Entities and value objects with their rules, repository interfaces, domain events. No Spring and no SQL. | `shared/domain`, `shared/error` |
+| `application/` | Use cases. Each one checks access, loads aggregates, applies the domain rules, saves, then publishes events and writes the audit log. | `domain/` |
+| `infrastructure/` | JDBC implementations of the repositories. | `domain/` |
+| `web/` | REST controllers and their request bodies. | `application/` |
+
+| Package | What it is |
+|---|---|
+| `tenant/` | `Tenant` (with `Environment` and `Specie`): create, edit, delete. A tenant that still has farms isn't deleted. |
+| `farm/` | `Farm` (with `Location`, `Protocol`, `ConnectivityStatus`): register, edit, move, delete. A farm takes its tenant's specie and environment. A new version is an upgrade. |
+| `estate/` | The read model: what the tenant and farm pages show (`EstateQueries`). It's the query side of `tenant/` and `farm/`, which only change data. |
+| `analytics/` | The semantic query layer that both the chat and the charts use: `DatasetCatalog`, `QueryBuilder`, `QueryService`. It listens for the `EstateChanged` event to re-read tenant and farm names. |
+| `platform/` | `/api/health`, `/api/me`, and `/panel.html` (the built chat panel, for the test host) |
+| `shared/` | Bearer-token sign-in for `/api` and tenant scope (`security/`), the shared tenant SQL filter and the estate clock (`persistence/`), domain errors (`error/`, mapped to HTTP status codes in `web/ApiExceptionHandler`), and `Problems`, which collects every validation error at once. |
+| `seed/` | The demo estate generator. |
+
+**Errors carry no HTTP status:** the domain raises `ValidationException`, `ConflictException`, `NotFoundException` and `ForbiddenException`, and only the web layer turns them into 400, 409, 404 and 403.
 
 ## Quick start
 
@@ -37,8 +64,9 @@ You need **JDK 21+**, **Maven 3.9+**, **Node 22.18+** and **Docker** (for Keyclo
 ```bash
 npm install && npm --prefix frontend install
 npm run db:up      # Keycloak (sign-in, :8080) + Postgres (:5433)
-npm run build      # Angular apps (frontend/dist) + backend jar
+npm run build      # Angular apps (frontend/dist) + backend and MCP server jars
 npm start          # backend on http://localhost:4300 (seeds the database on first run)
+npm run start:mcp  # MCP server on http://localhost:4301/mcp, in a second terminal — Claude connects here
 ```
 
 Open http://localhost:4300/ and sign in as any user below. Every password is **`password`**.
@@ -78,13 +106,14 @@ All passwords are `password`. The Keycloak admin console is at http://localhost:
 
 **How it works:**
 - **Keycloak issues the tokens.** The realm is imported from `keycloak/nms-realm.json` on start. `keycloak/build-realm.mjs` documents the realm and rebuilds it.
-- **The backend checks every `/api` and `/mcp` request.** It verifies the token's signature, issuer, expiry and audience (`aud: nms-ask-dashboard`).
+- **The backend checks every `/api` request, and the MCP server every `/mcp` tool call.** Both verify the token's signature, issuer, expiry and audience (`aud: nms-ask-dashboard`).
 - **What a user can see comes from the token**, not from the request:
   - `tenants` (tenant ids, or `*` for all) becomes a `t.id IN (…)` clause that `QueryBuilder` adds to **every** query, chart and dropdown value list;
   - `nms_access` (`read` or `write`) is read from the token too. Nothing needs write access since the dashboard became fixed.
 - **Each user has their own dashboard** and their own live-update stream.
-- **Discovery is open; data is not.** Claude can say hello (`initialize`), list the tools and fetch the chart panel without a token, so it starts without asking anyone to sign in. Every tool call (queries, charts) needs a token, so the sign-in page opens on the first NMS question. See `McpDiscoveryFilter`.
-- **MCP sign-in** follows the MCP authorization specification. Without a token, `/mcp` answers `401` with `WWW-Authenticate: Bearer resource_metadata=…`. `/.well-known/oauth-protected-resource/mcp` names Keycloak. Claude Code then registers itself with Keycloak, signs the user in with PKCE, and calls `/mcp` with that user's token.
+- **Discovery is open; data is not.** Claude can say hello (`initialize`), list the tools and fetch the chart panel without a token, so it starts without asking anyone to sign in. Every tool call (queries, charts) needs a token, so the sign-in page opens on the first NMS question. See `mcp-server`'s `McpDiscoveryFilter`.
+- **Signing out** is `POST /api/auth/logout` (in Claude: *"sign me out of NMS"*, the `logout` tool). The API ends the caller's Keycloak session with their own token, through Keycloak's Account API, so it can't be renewed. It refuses that session's tokens from the next request on, and so does the MCP server, whose `401` makes Claude sign in again. Only that sign-in ends; the same user's dashboard tab stays signed in. The list of signed-out sessions is kept in memory: after a restart, a token issued before the sign-out works again until it expires (15 minutes at most), but it can't be renewed.
+- **MCP sign-in** follows the MCP authorization specification. Without a token, `/mcp` answers `401` with `WWW-Authenticate: Bearer resource_metadata=…`. `/.well-known/oauth-protected-resource/mcp` names Keycloak. Claude Code then registers itself with Keycloak, signs the user in with PKCE, and calls `/mcp` with that user's token. The MCP server forwards that same token to the API.
 - **The chat panel never holds a token.** Its calls go through Claude's signed-in MCP connection.
 - **Audit log:** every tool call is written to the `audit` log with the user and the arguments.
 
@@ -99,15 +128,15 @@ npm run setup:claude            # prints the entry: this machine's java + the br
 npm run setup:claude -- --write # merges it into claude_desktop_config.json (backup kept as .bak)
 ```
 
-Quit (⌘Q) and reopen Claude Desktop. Keep the backend running; the bridge only relays to it.
+Quit (⌘Q) and reopen Claude Desktop. Keep the backend and the MCP server running; the bridge only relays to the MCP server.
 
-**Signing in happens by itself, when it's needed.** Opening Claude Desktop doesn't ask for anything. On your first NMS question, the bridge opens the NMS sign-in page in your browser. After you sign in, the tab says *"Signed in to NMS — go back to Claude"* and the answer arrives. The sign-in is kept in `~/.nms-ask-dashboard/bridge-token`, readable by you only, and renewed silently, so later sessions don't ask again. To switch users, delete that file.
+**Signing in happens by itself, when it's needed.** Opening Claude Desktop doesn't ask for anything. On your first NMS question, the bridge opens the NMS sign-in page in your browser. After you sign in, the tab says *"Signed in to NMS — go back to Claude"* and the answer arrives. The sign-in is kept in `~/.nms-dashboard/bridge-token`, readable by you only, and renewed silently, so later sessions don't ask again. To switch users, ask Claude to *"sign me out of NMS"*, or delete that file.
 
 Optionally, `npm run login` signs in ahead of time. `NMS_LOGIN=device` uses the device-code flow instead, for machines without a local browser.
 
-> When Claude Desktop runs against your company's cloud (third-party mode), it reads `~/Library/Application Support/Claude-3p/claude_desktop_config.json`, not the usual file. `setup:claude --write` writes both. If you edit by hand, put the `"nms-ask-dashboard"` entry **inside** the existing `"mcpServers"`, not a second `"mcpServers"` within it; Desktop reports that as *"not valid MCP server configurations"*.
+> When Claude Desktop runs against your company's cloud (third-party mode), it reads `~/Library/Application Support/Claude-3p/claude_desktop_config.json`, not the usual file. `setup:claude --write` writes both. If you edit by hand, put the `"nms-dashboard"` entry **inside** the existing `"mcpServers"`, not a second `"mcpServers"` within it; Desktop reports that as *"not valid MCP server configurations"*.
 
-**Claude Code:** the project `.mcp.json` connects straight to `http://localhost:4300/mcp`. Run Claude Code from this folder. On first use, `/mcp` shows the server needs authentication; choose it and sign in in the browser.
+**Claude Code:** the project `.mcp.json` connects straight to `http://localhost:4301/mcp`. Run Claude Code from this folder. On first use, `/mcp` shows the server needs authentication; choose it and sign in in the browser.
 
 ## Tenant administration (admin only)
 
@@ -145,6 +174,7 @@ Optionally, `npm run login` signs in ahead of time. `NMS_LOGIN=device` uses the 
 | `query_data` | model | Rows as text, for Claude to explore before it charts |
 | `show_chart` | model | **Renders the panel.** The spec is the dataset, metric, ≤2 dimensions, filters, time range and/or bucket, an optional previous-period comparison, and an insight sentence. It also returns a PNG of the chart and a localhost link to the interactive version. |
 | `run_chart` | panel only | Re-runs a spec when the user drills down. No model turn. |
+| `logout` | model | Signs the user out when they ask to sign out or switch user (`POST /api/auth/logout`). The next NMS question opens the sign-in page. |
 
 There are no dashboard tools: charts live in the chat, and the dashboard is a fixed page.
 
@@ -173,9 +203,9 @@ Keep a recording of a full run, and http://localhost:4300/host open in a tab, in
 ## Development
 
 ```bash
-npm test                        # backend unit tests: seed stories, query-builder safety
-npm start & npm run smoke       # end to end over MCP via the bridge, as real users: every tool, tenant isolation, 401 discovery
-npm --prefix frontend run build:panel   # rebuild only the chat panel. The backend re-reads it per request.
+npm test                        # unit tests: seed stories, query-builder safety; the MCP server's API client and error mapping
+npm start & npm run start:mcp & npm run smoke   # end to end over MCP via the bridge, as real users: every tool, tenant isolation, 401 discovery
+npm --prefix frontend run build:panel   # rebuild only the chat panel. The backend and the MCP server re-read it per request.
 ```
 
 ## Splitting the work (2 core + 5 supporting)
@@ -202,11 +232,12 @@ npm --prefix frontend run build:panel   # rebuild only the chat panel. The backe
 
 | Symptom | Fix |
 |---|---|
-| A tool says "The NMS backend is not running" | Run `npm start`. |
+| A tool says "The NMS API is not reachable" | Run `npm start` (the MCP server is up, the backend isn't). |
+| Claude can't connect to NMS at all | Run `npm run start:mcp`. |
 | Claude says the NMS connector "needs you to sign in" | Claude Desktop is still running an older connector: quit it with ⌘Q and reopen. The sign-in page then opens by itself. Keycloak must be running (`npm run db:up`). |
 | "not valid MCP server configurations were skipped: mcpServers" | The entry was nested one level too deep. Run `npm run setup:claude -- --write`, which fixes it. |
 | The browser loops back to the sign-in page | Keycloak was recreated, so its sessions are gone. Sign in again. |
 | "The panel is not built" | Run `npm --prefix frontend run build`. |
-| "There was a problem displaying content from nms-ask-dashboard" | Claude Desktop loads MCP App panels inside a frame from `*.claudemcpcontent.com`. On the company network, Zscaler intercepts that request: `~/Library/Logs/Claude-3p/claude.ai-web.log` shows `Framing 'https://gateway.zscalertwo.net/' violates … frame-src`. So every `show_chart` also returns a **PNG** (drawn by the backend, no frame needed) and a **localhost link** to the interactive version at `/host?spec=…`, which doesn't go through Zscaler. For in-chat panels on the company network, IT needs to allow `*.claudemcpcontent.com`. `CHART_IMAGES=false` turns the PNG off. |
+| "There was a problem displaying content from nms-dashboard" | Claude Desktop loads MCP App panels inside a frame from `*.claudemcpcontent.com`. On the company network, Zscaler intercepts that request: `~/Library/Logs/Claude-3p/claude.ai-web.log` shows `Framing 'https://gateway.zscalertwo.net/' violates … frame-src`. So every `show_chart` also returns a **PNG** (drawn by the backend, no frame needed) and a **localhost link** to the interactive version at `/host?spec=…`, which doesn't go through Zscaler. For in-chat panels on the company network, IT needs to allow `*.claudemcpcontent.com`. `CHART_IMAGES=false` turns the PNG off. |
 | Claude Desktop logs | In AWS (third-party) mode they're in `~/Library/Logs/Claude-3p/` |
 | Dates look old | Run `npm run start:reset`. |

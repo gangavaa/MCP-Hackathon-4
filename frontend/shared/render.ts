@@ -14,14 +14,15 @@ echarts.use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, Tool
 
 export type Theme = 'light' | 'dark';
 
-export const PALETTE = ['#0075c3', '#df117e', '#23885c', '#c08a2d', '#7048cc', '#459cce', '#6489a8', '#004a75', '#a1a131', '#d84c57'];
+/** MSD's palette, teal first: MSD Teal, light and deep teal, then navy, lime, sky and violet for further series. */
+export const PALETTE = ['#00857c', '#6eceb2', '#005c55', '#0c2340', '#bfed33', '#69b8f7', '#5450e4', '#7a8c8a', '#a6dcd6'];
 const PREVIOUS_COLOR = { light: '#b8c4d3', dark: '#4a5470' };
 
 export const SEMANTIC: Record<string, string> = {
-  CRITICAL: '#f87171', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#4ade80',
-  ONLINE: '#31c446', OFFLINE: '#d84c57', WARNING: '#c88849', PARTIALLY_ONLINE: '#a1a131', UNKNOWN: '#707070',
+  CRITICAL: '#f87171', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#6eceb2',
+  ONLINE: '#00857c', OFFLINE: '#d84c57', WARNING: '#c88849', PARTIALLY_ONLINE: '#a1a131', UNKNOWN: '#707070',
   LOW_BATTERY: '#c88849', NOT_ON_COW: '#7048cc',
-  OPEN: '#d84c57', CLOSED: '#6489a8',
+  OPEN: '#d84c57', CLOSED: '#7a8c8a',
   '5.16.0': '#d84c57',
 };
 

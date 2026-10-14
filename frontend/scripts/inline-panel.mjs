@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 /*
  * An MCP App is served as one HTML resource, so the panel's build (main.js, styles.css, any chunks) is folded into
- * its index.html: dist/panel/browser/* → dist/panel/index.html, the file the backend serves at ui://nms/ask-dashboard.html.
+ * its index.html: dist/panel/browser/* → dist/panel/index.html, the file the backend serves at ui://nms/dashboard.html.
  */
 
 const dist = fileURLToPath(new URL('../dist/panel/', import.meta.url));

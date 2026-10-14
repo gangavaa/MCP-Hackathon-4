@@ -4,11 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 /*
  * End to end through the MCP protocol, the way Claude Desktop drives it: launches the stdio bridge (as Desktop
- * does) against the running backend and calls every tool — as a real Keycloak user, then checks that tenants are
- * enforced. Start Keycloak (npm run db:up) and the backend (npm start) first.
+ * does) against the running MCP server and calls every tool — as a real Keycloak user, then checks that tenants are
+ * enforced, through the MCP server and through the API it calls. Start Keycloak (npm run db:up), the backend
+ * (npm start) and the MCP server (npm run start:mcp) first.
  */
 
 const KEYCLOAK = process.env.OIDC_ISSUER ?? 'http://localhost:8080/realms/nms';
+const API = process.env.NMS_API_URL ?? 'http://localhost:4300';
+const MCP = process.env.NMS_MCP_URL ?? 'http://localhost:4301/mcp';
 const bridge = fileURLToPath(new URL('../bridge/McpStdioBridge.java', import.meta.url));
 const java = process.env.JAVA_HOME ? `${process.env.JAVA_HOME}/bin/java` : 'java';
 
@@ -25,7 +28,7 @@ async function tokenFor(user: string): Promise<string> {
 
 async function connect(user: string): Promise<Client> {
   const client = new Client({ name: `smoke-${user}`, version: '0.0.0' });
-  await client.connect(new StdioClientTransport({ command: java, args: [bridge], env: { ...process.env, NMS_TOKEN: await tokenFor(user) } as Record<string, string>, stderr: 'ignore' }));
+  await client.connect(new StdioClientTransport({ command: java, args: [bridge], env: { ...process.env, NMS_MCP_URL: MCP, NMS_TOKEN: await tokenFor(user) } as Record<string, string>, stderr: 'ignore' }));
   return client;
 }
 
@@ -40,12 +43,12 @@ const textOf = (r: { content?: unknown }) => ((r.content as { type: string; text
 
 const { tools } = await client.listTools();
 const names = tools.map((t) => t.name).sort();
-check('tools listed — charts stay in the chat, nothing pins to the dashboard', names.join(',') === 'list_datasets,query_data,run_chart,show_chart', names.join(', '));
+check('tools listed — charts stay in the chat, nothing pins to the dashboard', names.join(',') === 'list_datasets,logout,query_data,run_chart,show_chart', names.join(', '));
 const showChart = tools.find((t) => t.name === 'show_chart');
-check('show_chart declares the panel', (showChart?._meta as { ui?: { resourceUri?: string } })?.ui?.resourceUri === 'ui://nms/ask-dashboard.html');
+check('show_chart declares the panel', (showChart?._meta as { ui?: { resourceUri?: string } })?.ui?.resourceUri === 'ui://nms/dashboard.html');
 
 const { resources } = await client.listResources();
-const panel = await client.readResource({ uri: 'ui://nms/ask-dashboard.html' });
+const panel = await client.readResource({ uri: 'ui://nms/dashboard.html' });
 const html = (panel.contents[0] as { text?: string; mimeType?: string }) ?? {};
 check('panel resource served', resources.length === 1 && (html.text?.length ?? 0) > 100_000, `${html.mimeType}, ${Math.round((html.text?.length ?? 0) / 1024)} KB`);
 
@@ -92,7 +95,7 @@ check('feedlotprod never sees Hoeve De Linde (a Dairy Prod farm)', !feedlotTop.i
 await feedlot.close();
 
 // The dashboard's tenant and farm pages: the same tenant scope over REST ----------------------------------------
-const api = async (path: string, user: string) => fetch(`http://localhost:4300${path}`, { headers: { authorization: `Bearer ${await tokenFor(user)}` } });
+const api = async (path: string, user: string) => fetch(`${API}${path}`, { headers: { authorization: `Bearer ${await tokenFor(user)}` } });
 const tenants = (await (await api('/api/tenants', 'admin')).json()) as { id: string; name: string }[];
 const dairyProd = tenants.find((t) => t.name === 'Dairy Prod')!;
 const feedlotProd = tenants.find((t) => t.name === 'Feedlot Prod')!;
@@ -107,7 +110,7 @@ check('dairyprod cannot open a Feedlot Prod tenant or farm page', otherTenant.st
 
 // Tenant administration: admin only, validated, and a tenant with farms is never deleted -------------------------
 const send = async (method: string, path: string, user: string, body?: unknown) =>
-  fetch(`http://localhost:4300${path}`, {
+  fetch(`${API}${path}`, {
     method,
     headers: { authorization: `Bearer ${await tokenFor(user)}`, 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -158,11 +161,24 @@ const farmGone = await send('GET', `/api/farms/${farm.id}`, 'admin');
 check('admin deletes an empty farm', farmDeleted.status === 204 && farmGone.status === 404, `${farmDeleted.status}, then ${farmGone.status}`);
 
 // No token at all: the backend's 401 points at its OAuth metadata (MCP authorization) --------------------------
-const post = (body: string) => fetch('http://localhost:4300/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body });
+const post = (body: string) => fetch(MCP, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body });
 const listed401 = await post('{"jsonrpc":"2.0","id":1,"method":"tools/list"}');
 check('no token: discovery (tools/list) is open, so Claude can start without a sign-in', listed401.status === 200);
 const anonymous = await post('{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"query_data","arguments":{"dataset":"farms","metric":"farm_count"}}}');
 check('no token: data (tools/call) is 401 with resource_metadata', anonymous.status === 401 && (anonymous.headers.get('www-authenticate') ?? '').includes('resource_metadata='), anonymous.headers.get('www-authenticate') ?? '');
+
+
+// Sign-out: the logout tool ends this sign-in — Keycloak, the API and the MCP server all refuse its token after -----
+const signedIn = await tokenFor('dairyprod');
+const asSignedIn = (body: string) => fetch(MCP, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${signedIn}` }, body });
+const logout = (await (await asSignedIn('{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"logout","arguments":{}}}')).json()) as { result?: { isError?: boolean; content: { text: string }[] } };
+check('logout signs the user out', logout.result?.isError !== true && (logout.result?.content[0]?.text ?? '').startsWith('Signed out dairyprod'), logout.result?.content[0]?.text.slice(0, 60));
+const afterMcp = await asSignedIn('{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_datasets","arguments":{}}}');
+check('after logout: the MCP server answers 401, so Claude signs in again', afterMcp.status === 401 && (afterMcp.headers.get('www-authenticate') ?? '').includes('signed out'), afterMcp.headers.get('www-authenticate') ?? '');
+const afterApi = await fetch(`${API}/api/me`, { headers: { authorization: `Bearer ${signedIn}` } });
+check('after logout: the API refuses the same token', afterApi.status === 401, String(afterApi.status));
+const again = await api('/api/me', 'dairyprod');
+check('a new sign-in works again', again.status === 200, String(again.status));
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

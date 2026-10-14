@@ -1,0 +1,36 @@
+server:
+  port: ${MCP_PORT:4301}
+
+spring:
+  application:
+    name: nms-dashboard-mcp
+  config:
+    # The repo's .env (OIDC_*, …) — its KEY=value lines are valid properties.
+    import: optional:file:../.env[.properties]
+  jackson:
+    default-property-inclusion: non_null
+
+app:
+  # Where this server is reachable from outside — the resource MCP clients sign in for.
+  public-url: ${MCP_PUBLIC_URL:http://localhost:${server.port}}
+  # The NMS REST API every tool calls, as this server reaches it (in docker compose: http://app:4300).
+  api-url: ${NMS_API_URL:http://localhost:4300}
+  # The dashboard as the user's browser reaches it — for the links handed to the user.
+  dashboard-url: ${DASHBOARD_URL:http://localhost:4300}
+  auth:
+    # Off only together with the API's AUTH_ENABLED=false: tool calls then go to the API without a token.
+    enabled: ${AUTH_ENABLED:true}
+    # The same issuer and audience as the API: the token this server verifies is the one it forwards.
+    issuer: ${OIDC_ISSUER:http://localhost:8080/realms/nms}
+    jwks-uri: ${OIDC_JWKS_URI:${app.auth.issuer}/protocol/openid-connect/certs}
+    # The Keycloak client id the tokens name in `aud` — kept from the project's first name, as renaming it in Keycloak
+    # would invalidate every sign-in.
+    audience: ${OIDC_AUDIENCE:nms-ask-dashboard}
+  # The chat panel (the MCP App), built into one HTML file by npm run build in frontend/.
+  panel-file: ${PANEL_FILE:../frontend/dist/panel/index.html}
+  # PNG of every chart, for hosts that cannot frame the panel.
+  chart-images: ${CHART_IMAGES:true}
+
+logging:
+  level:
+    io.modelcontextprotocol: warn
