@@ -1,9 +1,9 @@
-# Render Blueprint: Postgres, Keycloak, the backend (+ dashboard) and the MCP server. Render → New → Blueprint → this
-# repo. Every push to main redeploys.
+# Render Blueprint: Postgres, Keycloak, the REST backend, the Angular dashboard (a static site in front of the backend)
+# and the MCP server. Render → New → Blueprint → this repo. Every push to main redeploys.
 #
 # Services reach each other by their public https URLs, which are https://<name>.onrender.com — if Render had to add a
-# suffix to a name (it is taken), fix APP_URL / OIDC_ISSUER / NMS_API_URL / DASHBOARD_URL below in the Render
-# dashboard to the URLs it shows. ${RENDER_EXTERNAL_URL} (a service's own URL, set by Render) and ${...} inside
+# suffix to a name (it is taken), fix APP_URL / OIDC_ISSUER / NMS_API_URL / DASHBOARD_URL and the frontend's /api
+# rewrite below in the Render dashboard to the URLs it shows. ${RENDER_EXTERNAL_URL} (a service's own URL, set by Render) and ${...} inside
 # values are resolved by Spring at startup, not by Render.
 
 databases:
@@ -13,24 +13,45 @@ databases:
     user: nms
 
 services:
-  # Sign-in. Dev mode with its own in-container store: the realm (clients, demo users) is re-imported on every start.
+  # Sign-in. Pre-built Keycloak with its own in-container store: the realm (clients, demo users) is re-imported on every
+  # start. Fits the free 512 MB (~400 MB used); the heap is capped in keycloak/Dockerfile.
   - type: web
     name: nms-hack4-keycloak
     runtime: docker
-    plan: free # Keycloak wants ~1 GB; switch to starter if it runs out of memory
+    plan: free
     dockerfilePath: ./keycloak/Dockerfile
     dockerContext: ./keycloak
     envVars:
       - key: PORT
         value: "8080"
-      - key: APP_URL
-        value: https://nms-hack4-app.onrender.com
+      - key: APP_URL # where users open the dashboard — the realm's redirect URIs and web origins
+        value: https://nms-hack4-frontend.onrender.com
       - key: KC_BOOTSTRAP_ADMIN_USERNAME
         value: admin
       - key: KC_BOOTSTRAP_ADMIN_PASSWORD
         generateValue: true
 
-  # REST API + the Angular dashboard. Seeds the database on first start.
+  # The Angular dashboard and the panel test host (/host), served from Render's CDN. /api is rewritten to the backend,
+  # so the browser stays on one origin (no CORS) and the app's relative /api URLs work unchanged.
+  - type: web
+    name: nms-hack4-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build && cp dist/panel/index.html dist/dashboard/browser/panel.html
+    staticPublishPath: dist/dashboard/browser
+    envVars:
+      - key: NODE_VERSION
+        value: "22.18.0"
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://nms-hack4-app.onrender.com/api/*
+      # Angular routes are client-side; Render applies a rewrite only when no file matches the path.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # REST API (the dashboard is the frontend site above). Seeds the database on first start.
   - type: web
     name: nms-hack4-app
     runtime: docker
@@ -69,7 +90,7 @@ services:
       - key: NMS_API_URL
         value: https://nms-hack4-app.onrender.com
       - key: DASHBOARD_URL
-        value: https://nms-hack4-app.onrender.com
+        value: https://nms-hack4-frontend.onrender.com
       - key: OIDC_ISSUER
         value: https://nms-hack4-keycloak.onrender.com/realms/nms
       - key: JAVA_TOOL_OPTIONS
