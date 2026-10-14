@@ -41,7 +41,7 @@ services:
     staticPublishPath: dist/dashboard/browser
     envVars:
       - key: NODE_VERSION
-        value: "22.18.0"
+        value: "22" # latest 22.x; the Angular CLI needs ≥ 22.22.3
     routes:
       - type: rewrite
         source: /api/*

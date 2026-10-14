@@ -8,7 +8,7 @@ Ask questions about the NMS estate in plain English from Claude; an interactive 
 
 ## Commands
 
-Prereqs: JDK 21+, Maven 3.9+, Node 22.18+, Docker (Keycloak).
+Prereqs: JDK 21+, Maven 3.9+, Node 22.22.3+, Docker (Keycloak).
 
 ```bash
 npm install && npm --prefix frontend install

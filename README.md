@@ -59,7 +59,7 @@ The backend has one package per domain, under `com.nms.dashboard`. Each domain i
 
 ## Quick start
 
-You need **JDK 21+**, **Maven 3.9+**, **Node 22.18+** and **Docker** (for Keycloak sign-in).
+You need **JDK 21+**, **Maven 3.9+**, **Node 22.22.3+** and **Docker** (for Keycloak sign-in).
 
 ```bash
 npm install && npm --prefix frontend install
