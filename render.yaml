@@ -1,0 +1,76 @@
+# Render Blueprint: Postgres, Keycloak, the backend (+ dashboard) and the MCP server. Render → New → Blueprint → this
+# repo. Every push to main redeploys.
+#
+# Services reach each other by their public https URLs, which are https://<name>.onrender.com — if Render had to add a
+# suffix to a name (it is taken), fix APP_URL / OIDC_ISSUER / NMS_API_URL / DASHBOARD_URL below in the Render
+# dashboard to the URLs it shows. ${RENDER_EXTERNAL_URL} (a service's own URL, set by Render) and ${...} inside
+# values are resolved by Spring at startup, not by Render.
+
+databases:
+  - name: nms-hack4-db
+    plan: free
+    databaseName: nms_dashboard
+    user: nms
+
+services:
+  # Sign-in. Dev mode with its own in-container store: the realm (clients, demo users) is re-imported on every start.
+  - type: web
+    name: nms-hack4-keycloak
+    runtime: docker
+    plan: free # Keycloak wants ~1 GB; switch to starter if it runs out of memory
+    dockerfilePath: ./keycloak/Dockerfile
+    dockerContext: ./keycloak
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: APP_URL
+        value: https://nms-hack4-app.onrender.com
+      - key: KC_BOOTSTRAP_ADMIN_USERNAME
+        value: admin
+      - key: KC_BOOTSTRAP_ADMIN_PASSWORD
+        generateValue: true
+
+  # REST API + the Angular dashboard. Seeds the database on first start.
+  - type: web
+    name: nms-hack4-app
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: "4300"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nms-hack4-db
+          property: connectionString
+      - key: API_URL
+        value: ${RENDER_EXTERNAL_URL}
+      - key: OIDC_ISSUER
+        value: https://nms-hack4-keycloak.onrender.com/realms/nms
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70
+
+  # Claude connects to https://nms-hack4-mcp.onrender.com/mcp.
+  - type: web
+    name: nms-hack4-mcp
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.mcp
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: "4301"
+      - key: MCP_PORT
+        value: "4301"
+      - key: MCP_PUBLIC_URL
+        value: ${RENDER_EXTERNAL_URL}
+      - key: NMS_API_URL
+        value: https://nms-hack4-app.onrender.com
+      - key: DASHBOARD_URL
+        value: https://nms-hack4-app.onrender.com
+      - key: OIDC_ISSUER
+        value: https://nms-hack4-keycloak.onrender.com/realms/nms
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70

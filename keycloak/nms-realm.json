@@ -1804,7 +1804,9 @@
           ],
           "trusted-hosts": [
             "127.0.0.1",
-            "localhost"
+            "localhost",
+            "claude.ai",
+            "claude.com"
           ],
           "client-uris-must-match": [
             "true"

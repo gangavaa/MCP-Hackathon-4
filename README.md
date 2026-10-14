@@ -208,6 +208,21 @@ npm start & npm run start:mcp & npm run smoke   # end to end over MCP via the br
 npm --prefix frontend run build:panel   # rebuild only the chat panel. The backend and the MCP server re-read it per request.
 ```
 
+## Deploy to Render
+
+`render.yaml` is a Blueprint for the whole stack: Postgres, Keycloak (`keycloak/Dockerfile`, realm baked in), the
+backend + dashboard (`Dockerfile`) and the MCP server (`Dockerfile.mcp`).
+
+1. Render → **New → Blueprint** → pick this GitHub repo → **Apply**. Every push to `main` redeploys.
+2. Check the service URLs Render assigned. If any is not `https://nms-hack4-<name>.onrender.com`, fix `APP_URL`
+   (Keycloak), `OIDC_ISSUER` (app, mcp), `NMS_API_URL` and `DASHBOARD_URL` (mcp) in the Render dashboard.
+3. Open `https://nms-hack4-app.onrender.com/` and sign in with a demo user.
+4. In Claude, add a custom connector: `https://nms-hack4-mcp.onrender.com/mcp`.
+
+Free instances sleep after 15 minutes idle (first request then takes about a minute) and free Postgres expires after
+30 days. Keycloak wants ~1 GB; if it runs out of memory, move it to the Starter plan. It keeps its data inside the
+container, so the realm is re-imported fresh on every restart.
+
 ## Splitting the work (2 core + 5 supporting)
 
 | Who | Owns |

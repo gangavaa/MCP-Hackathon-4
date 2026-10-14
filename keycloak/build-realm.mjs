@@ -139,18 +139,19 @@ await api('POST', `/realms/${REALM}/clients`, publicClient('nms-cli', 'NMS scrip
 }));
 console.log('clients nms-dashboard, nms-bridge, nms-cli');
 
-// Dynamic client registration: MCP clients (Claude Code) register themselves with a loopback redirect URI. -------
+// Dynamic client registration: MCP clients register themselves — Claude Code with a loopback redirect URI, the
+// claude.ai connector with https://claude.ai/api/mcp/auth_callback (claude.com likewise). ---------------------------
 const components = await api('GET', `/realms/${REALM}/components?type=org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy`);
 const trustedHosts = components.find((c) => c.providerId === 'trusted-hosts' && c.subType === 'anonymous');
 await api('PUT', `/realms/${REALM}/components/${trustedHosts.id}`, {
   ...trustedHosts,
-  config: { 'trusted-hosts': ['localhost', '127.0.0.1'], 'host-sending-registration-request-must-match': ['false'], 'client-uris-must-match': ['true'] },
+  config: { 'trusted-hosts': ['localhost', '127.0.0.1', 'claude.ai', 'claude.com'], 'host-sending-registration-request-must-match': ['false'], 'client-uris-must-match': ['true'] },
 });
 const allowedScopes = components.find((c) => c.providerId === 'allowed-client-templates' && c.subType === 'anonymous');
 if (allowedScopes) {
   await api('PUT', `/realms/${REALM}/components/${allowedScopes.id}`, { ...allowedScopes, config: { ...allowedScopes.config, 'allow-default-scopes': ['true'] } });
 }
-console.log('anonymous client registration for localhost redirect URIs');
+console.log('anonymous client registration for localhost and claude.ai redirect URIs');
 
 // Users ------------------------------------------------------------------------------------------------------------
 for (const u of USERS) {
